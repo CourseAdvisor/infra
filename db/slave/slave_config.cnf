@@ -1,6 +1,5 @@
 [mysqld]
 server-id   = __SERVER_ID__
-#relay-log   = /var/log/mysql/mysql-relay-bin.log
-#log_bin     = /var/log/mysql/mysql-bin.log
+relay-log   = /var/lib/mysql/mysql-relay-bin.log
 replicate-do-db   = master
 report_host = __SERVER_NAME__

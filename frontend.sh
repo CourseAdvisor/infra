@@ -12,6 +12,18 @@ For command-specific usage instructions, run frontend.sh command --help
 EOF
 }
 
+process_args() {
+  # Poor man's path expansion in argument 
+  while [ $# -gt 0 ]; do
+    if [ -e "$1" ]; then
+      readlink -f "$1"
+    else
+      echo "$1"
+    fi
+    shift
+  done
+}
+
 
 if [ $# -lt 2 ]; then
   usage
@@ -28,6 +40,8 @@ fi
 prog="$1"
 shift
 
+args=`process_args $@`
+
 case "$prog" in
   help|--help|-h)
     usage
@@ -35,7 +49,11 @@ case "$prog" in
   ;;
   slave)
     cd db/slave
-    ./slave.sh $@
+    ./slave.sh $args
+  ;;
+  master)
+    cd db/master
+    ./master.sh $args
   ;;
   *)
     usage

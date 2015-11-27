@@ -11,22 +11,34 @@ backend as well as replication slaves, backup and deployment scripts.
 
 This repository assumes a regular linux distro with the following programs accessible on the cli:
 - docker
-- mysql
+- mysql (+ mysqldump)
 
 ## Usage
 
 TBD. The general idea would be to have frontend.sh expose all functionnalities although
 sub-projects should be as disconnected as possible.
 
-For now, one can create a slave instance like this:
 
-`./frontend.sh slave setup # Creates and starts a replication slave`
+### Replication slave
+
+Set up a replication slave like this:
+
+`sudo ./frontend.sh slave setup`
 
 And remove it with
+
 `./frontend.sh slave remove`
 
-The container can be started/stopped using the start and stop commands
-```sh
-./frontend.sh slave stop
-./frontend.sh slave start
-```
+Additionnal commands available: `stop`, `start`
+
+(Notice: you must take care of `start`ing the instance after a reboot yourself)
+
+
+### Master database
+
+Master DB is deployed like this:
+
+`sudo ./frontend.sh master setup -b backup_db.sql` where `backup_db.sql` is a sql
+file containing a backup of the production data.
+
+Additionnal commands: `stop`, `start`, `remove`
