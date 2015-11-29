@@ -1,0 +1,28 @@
+prod:
+  build: docker/web
+  ports:
+   - 5000:80
+  volumes:
+   - ./build/production:/var/www
+  links:
+   - php-prod:fpm
+
+php-prod:
+  build: docker/php
+  volumes:
+    - ./build/production:/var/www
+
+db-prod:
+  build: docker/db
+  volumes:
+    - ./data/production/db:/var/lib/mysql
+  environment:
+    - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    - MYSQL_PASSWORD=${DB_USER_PASSWORD}
+  container_name: db-prod
+
+
+build-tools:
+  build: docker/build-tools
+  volumes:
+    - ./build:/build

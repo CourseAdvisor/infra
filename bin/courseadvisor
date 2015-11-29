@@ -1,0 +1,128 @@
+#!/bin/bash
+
+
+usage() {
+  cat 1>&2 <<EOF
+  usage: courseadvisor [TODO]
+
+TODO: define usage
+EOF
+}
+
+deploy-staging() {
+	rm -rf "${BASE_DIR}/build/staging/courseadvisor"
+	cp -r "${BASE_DIR}/src/courseadvisor" "${BASE_DIR}/build/staging/courseadvisor"
+  cd "$BASE_DIR"
+  # TODO: factor-in some setup in build-tool's entrypoint
+  docker-compose run build-tools sh -c '. ~/.profile && cd /build/staging/courseadvisor && curl -sS https://getcomposer.org/installer | php && npm install --unsafe-perm'
+}
+
+deploy-production() {
+  rev=$(date "+%s")
+  deployment="${BASE_DIR}/build/production/dep-$rev"
+
+  echo "Deployment: staging -> production"
+
+	echo "cloning staging..."
+	cp -r "${BASE_DIR}/build/staging/courseadvisor" "$deployment"
+
+	echo "clearing npm packages"
+	rm -rf "$deployment/node_modules"
+
+	echo "TODO?: use production config"
+	# rm -rf "$deployment/app/config/production"
+	# ln -s "$config" "$deployment/app/config/production"
+
+	echo "use shared sessions"
+	if [ ! -d "${BASE_DIR}/data/production/storage/sessions" ]; then
+		mkdir -p "${BASE_DIR}/data/production/storage/sessions"
+	fi
+	rm -rf "$deployment/app/storage/sessions"
+	ln -s "${BASE_DIR}/data/production/storage/sessions" "$deployment/app/storage/sessions"
+
+	echo "ensuring owner and group"
+	chown -R hadrien:www-data "$deployment"
+
+	echo "replacing production"
+	unlink "${BASE_DIR}/build/production/latest" || true
+	ln -rs "$deployment" "${BASE_DIR}/build/production/latest"
+	unlink "${BASE_DIR}/build/production/courseadvisor" || true
+	ln -rs "${BASE_DIR}/build/production/latest" "${BASE_DIR}/build/production/courseadvisor"
+
+	# reset_cache TODO
+
+	echo "cleaning deployments dir"
+	#keep the last 10 revisions
+	rm -fr `ls -A "${BASE_DIR}/build/production" | sort | head -n-10`
+}
+
+ensure-deployed() {
+  if [ ! -d "${BASE_DIR}/build/staging/courseadvisor" ]; then
+    deploy-staging
+  fi
+
+  if [ ! -d "${BASE_DIR}/build/production/courseadvisor" ]; then
+    deploy-production
+  fi
+}
+
+inject_sql() {
+  if [ -z "$1" ]; then
+    echo "please specify which database to inject sql into" >&2
+    return 1
+  fi
+  if [ "$1" != "prod" ] && [ "$1" != "staging" ]; then
+    echo "Database must be one of prod or staging" >&2
+    return 1;
+  fi
+  docker run -i --link "db-$1:mysql" --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
+}
+
+db-config() {
+  inject_sql prod <<EOF
+  GRANT RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '$SLAVE_REPLICATION_USER'@'%' IDENTIFIED BY '$SLAVE_REPLICATION_PASSWORD';
+  GRANT SELECT, LOCK TABLES, SHOW VIEW ON \`master\`.* TO '$SLAVE_REPLICATION_USER'@'%';
+EOF
+}
+
+db-seed() {
+  cat $1 | inject_sql prod
+}
+
+BASE_DIR=`readlink -f \`dirname $0\`/..`
+. "${BASE_DIR}/env"
+
+prog="$1"
+shift
+
+case "$prog" in
+  help|--help|-h)
+    usage
+    exit 0
+  ;;
+  db-config)
+    db-config
+  ;;
+  db-seed)
+    db-seed $1
+  ;;
+  deploy)
+    cd ${BASE_DIR}
+    deploy-staging
+    deploy-production
+    docker-compose restart prod php-prod
+  ;;
+  slave)
+    cd ${BASE_DIR}/docker/db-slave
+    ./slave.sh $@
+  ;;
+  up)
+    cd ${BASE_DIR}
+    ensure-deployed
+    docker-compose up
+  ;;
+  *)
+    echo "unknown command '$prog'" 1>&2
+    usage
+  ;;
+esac

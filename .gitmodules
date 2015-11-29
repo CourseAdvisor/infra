@@ -1,0 +1,3 @@
+[submodule "src/courseadvisor"]
+	path = src/courseadvisor
+	url = git@github.com:courseadvisor/courseadvisor

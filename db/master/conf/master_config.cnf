@@ -1,5 +1,0 @@
-[mysqld]
-server-id	= 1
-expire_logs_days	= 10
-binlog_do_db	= master
-log_bin			= /var/lib/mysql/mysql-bin.log
