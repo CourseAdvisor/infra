@@ -26,3 +26,5 @@ build-tools:
   build: docker/build-tools
   volumes:
     - ./build:/build
+    - ./.cache/composer:/var/local/composer
+    - ./.cache/npm:/var/local/npm-cache

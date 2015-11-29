@@ -12,9 +12,10 @@ EOF
 deploy-staging() {
 	rm -rf "${BASE_DIR}/build/staging/courseadvisor"
 	cp -r "${BASE_DIR}/src/courseadvisor" "${BASE_DIR}/build/staging/courseadvisor"
+  rm -rf "${BASE_DIR}/build/staging/courseadvisor/.git"
   cd "$BASE_DIR"
   # TODO: factor-in some setup in build-tool's entrypoint
-  docker-compose run build-tools sh -c '. ~/.profile && cd /build/staging/courseadvisor && curl -sS https://getcomposer.org/installer | php && npm install --unsafe-perm'
+  docker-compose run --rm build-tools sh -c '. ~/.profile && cd /build/staging/courseadvisor && curl -sS https://getcomposer.org/installer | php && npm install --unsafe-perm && gulp publish'
 }
 
 deploy-production() {
@@ -115,6 +116,10 @@ case "$prog" in
   slave)
     cd ${BASE_DIR}/docker/db-slave
     ./slave.sh $@
+  ;;
+  build)
+    cd ${BASE_DIR}
+    docker-compose build
   ;;
   up)
     cd ${BASE_DIR}
